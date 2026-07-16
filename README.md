@@ -4,8 +4,8 @@ Calculadora de custos e precificação para impressão 3D, com identidade
 visual própria da marca BMR. Duas versões, mesmo motor de cálculo:
 
 - **Desktop** (este README) — app PySide6 standalone com instalador Windows.
-- **Web** — versão estática (HTML/CSS/JS puro, sem backend), feita pra
-  publicar no GitHub Pages. Veja [web/README.md](web/README.md).
+- **Web** — versão estática (HTML/CSS/JS puro, sem backend), publicada via
+  GitHub Pages a partir da pasta `docs/`. Veja [docs/README.md](docs/README.md).
 
 ## Como rodar (a partir do código)
 
