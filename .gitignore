@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+env/
+
+# PyInstaller (artefatos de build — regeráveis via BUILD.md)
+build/
+dist/
+*.spec
+
+# Dados locais (SQLite fica em %LOCALAPPDATA%, nunca no repo, mas por via das dúvidas)
+*.db
+*.sqlite
+*.sqlite3
+
+# Editor / SO
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store

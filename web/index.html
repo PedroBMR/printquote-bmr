@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PrintQuote by BMR — Calculadora de Custos e Precificação 3D</title>
+<meta name="description" content="Calculadora de custos e precificação para impressão 3D — material, energia, depreciação, mão de obra, taxas e margem, tudo em um único orçamento." />
+<link rel="icon" href="assets/favicon-32.png" />
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<div class="bg-orbs"><div class="orb-3"></div></div>
+
+<header class="topbar">
+  <img src="assets/icon-256.png" alt="PrintQuote by BMR" />
+  <div class="brand-text">
+    <h1>PrintQuote <span style="color:var(--text-muted); font-weight:600;">by BMR</span></h1>
+    <span>Calculadora de custos e precificação para impressão 3D</span>
+  </div>
+  <div class="spacer"></div>
+</header>
+
+<nav class="tabs">
+  <button data-tab="calculator" class="active">Calculadora</button>
+  <button data-tab="materials">Materiais</button>
+  <button data-tab="printers">Impressoras</button>
+  <button data-tab="channels">Canais de venda</button>
+  <button data-tab="settings">Configurações</button>
+  <button data-tab="history">Histórico</button>
+</nav>
+
+<main>
+
+  <!-- ======================= CALCULADORA ======================= -->
+  <section id="tab-calculator" class="tab-panel active">
+    <div class="grid-2">
+      <div>
+        <div class="card">
+          <h2>Peça</h2>
+          <div class="field"><label>Nome da peça</label><input id="pieceName" type="text" placeholder="Ex: Suporte de celular" /></div>
+          <div class="field"><label>Impressora</label><select id="printerSelect"></select></div>
+          <div class="field"><label>Tempo de impressão (h)</label><input id="printTime" type="number" min="0" step="0.01" value="0" /></div>
+        </div>
+
+        <div class="card">
+          <h2>Materiais (da biblioteca)</h2>
+          <div id="materialRows"></div>
+          <button class="btn" id="addMaterialBtn" type="button">+ Adicionar material</button>
+          <div class="field" style="margin-top:14px;"><label>Desperdício/purga (%)</label><input id="wastePct" type="number" min="0" max="100" step="0.1" value="5" /></div>
+        </div>
+
+        <div class="card">
+          <h2>Mão de obra (horas)</h2>
+          <div class="field"><label>Modelagem/preparação</label><input id="laborModeling" type="number" min="0" step="0.01" value="0" /></div>
+          <div class="field"><label>Fatiamento/setup</label><input id="laborSlicing" type="number" min="0" step="0.01" value="0" /></div>
+          <div class="field"><label>Pós-processamento</label><input id="laborPost" type="number" min="0" step="0.01" value="0" /></div>
+          <div class="field"><label>Embalagem</label><input id="laborPackaging" type="number" min="0" step="0.01" value="0" /></div>
+          <div class="field"><label>Valor hora (R$, 0 = padrão)</label><input id="laborRateOverride" type="number" min="0" step="0.01" value="0" /></div>
+        </div>
+
+        <div class="card">
+          <h2>Falha, overhead, embalagem e frete</h2>
+          <div class="field"><label>Taxa de falha % (0 = padrão)</label><input id="failureOverride" type="number" min="0" max="95" step="0.1" value="0" /></div>
+          <div class="field"><label>Overhead por peça (R$)</label><input id="overheadOverride" type="number" min="0" step="0.01" value="0" /></div>
+          <div class="field"><label>Custo de embalagem (R$)</label><input id="packagingCost" type="number" min="0" step="0.01" value="0" /></div>
+          <div class="field"><label>Frete — modo</label>
+            <select id="shippingMode">
+              <option value="repassar">Repassar integral ao cliente</option>
+              <option value="subsidiar">Subsidiar parcialmente</option>
+              <option value="gratis_embutido">Grátis (embutido no preço)</option>
+            </select>
+          </div>
+          <div class="field"><label>Frete — custo (R$)</label><input id="shippingCost" type="number" min="0" step="0.01" value="0" /></div>
+          <div class="field"><label>Frete — % subsidiado</label><input id="shippingSubsidizePct" type="number" min="0" max="100" step="1" value="0" /></div>
+        </div>
+
+        <div class="card">
+          <h2>Canal de venda, impostos e comparação</h2>
+          <div class="field"><label>Canal de venda</label><select id="channelSelect"></select></div>
+          <div class="field"><label>Taxa gateway % (0 = padrão)</label><input id="gatewayOverride" type="number" min="0" max="20" step="0.1" value="0" /></div>
+          <div class="field"><label>Imposto % (0 = padrão)</label><input id="taxOverride" type="number" min="0" max="50" step="0.1" value="0" /></div>
+          <div class="field"><label>Preço concorrente (R$, opcional)</label><input id="competitorPrice" type="number" min="0" step="0.01" value="0" /></div>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-accent" id="calculateBtn" type="button">Calcular</button>
+          <button class="btn" id="saveHistoryBtn" type="button">Salvar no histórico</button>
+          <button class="btn" id="exportBtn" type="button">Exportar orçamento (PDF)</button>
+        </div>
+      </div>
+
+      <div>
+        <div class="card" id="resultCard">
+          <h2>Resultado</h2>
+          <div id="resultEmpty" class="empty-state">
+            <div class="icon">◇</div>
+            Preencha a peça e clique em <strong>Calcular</strong> para ver o breakdown de custos e os preços sugeridos.
+          </div>
+          <div id="resultContent" style="display:none;">
+            <div class="result-hero">
+              <div class="donut-wrap">
+                <div class="donut" id="donutChart"></div>
+                <div class="donut-hole">
+                  <span class="donut-label">Custo total</span>
+                  <span class="donut-value" id="donutTotal">R$ 0,00</span>
+                </div>
+              </div>
+              <div class="chart-legend" id="chartLegend"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" id="scenariosCard" style="display:none;">
+          <h2>Cenários de preço sugerido</h2>
+          <div class="pricing-grid" id="pricingGrid"></div>
+          <div id="competitorBox"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================= MATERIAIS ======================= -->
+  <section id="tab-materials" class="tab-panel">
+    <div class="list-form-layout">
+      <div class="card">
+        <h2>Biblioteca de materiais</h2>
+        <table>
+          <thead><tr><th>Nome</th><th>Tipo</th><th>Preço</th><th>Unidade</th><th>Obs.</th></tr></thead>
+          <tbody id="materialsTableBody"></tbody>
+        </table>
+      </div>
+      <div class="card">
+        <h2 id="materialFormTitle">Cadastrar / editar material</h2>
+        <div class="field-full"><label>Nome</label><input id="matName" type="text" /></div>
+        <div class="field-full"><label>Tipo</label>
+          <select id="matType">
+            <option value="filamento">Filamento</option>
+            <option value="resina">Resina</option>
+          </select>
+        </div>
+        <div class="field-full"><label>Preço (por kg ou por L)</label><input id="matPrice" type="number" min="0" step="0.01" value="0" /></div>
+        <div class="field-full"><label>Unidade</label><input id="matUnit" type="text" value="kg" readonly /></div>
+        <div class="field-full"><label>Observações</label><input id="matNotes" type="text" /></div>
+        <div class="btn-row">
+          <button class="btn btn-accent" id="matSaveBtn" type="button">Salvar</button>
+          <button class="btn" id="matNewBtn" type="button">Novo</button>
+          <button class="btn btn-danger" id="matDeleteBtn" type="button">Excluir</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================= IMPRESSORAS ======================= -->
+  <section id="tab-printers" class="tab-panel">
+    <div class="list-form-layout">
+      <div class="card">
+        <h2>Perfis de impressora</h2>
+        <table>
+          <thead><tr><th>Nome</th><th>Valor pago</th><th>Vida útil (h)</th><th>Potência (W)</th><th>Manutenção (R$/h)</th></tr></thead>
+          <tbody id="printersTableBody"></tbody>
+        </table>
+      </div>
+      <div class="card">
+        <h2 id="printerFormTitle">Cadastrar / editar impressora</h2>
+        <div class="field-full"><label>Nome</label><input id="prnName" type="text" /></div>
+        <div class="field-full"><label>Valor pago (R$)</label><input id="prnPrice" type="number" min="0" step="0.01" value="0" /></div>
+        <div class="field-full"><label>Vida útil estimada (h)</label><input id="prnLifetime" type="number" min="1" step="1" value="6000" /></div>
+        <div class="field-full"><label>Potência média (W)</label><input id="prnWatts" type="number" min="1" step="1" value="120" /></div>
+        <div class="field-full"><label>Manutenção por hora de uso (R$)</label><input id="prnMaintenance" type="number" min="0" step="0.001" value="0.15" /></div>
+        <div class="field-full"><label>Observações</label><input id="prnNotes" type="text" /></div>
+        <div class="btn-row">
+          <button class="btn btn-accent" id="prnSaveBtn" type="button">Salvar</button>
+          <button class="btn" id="prnNewBtn" type="button">Novo</button>
+          <button class="btn btn-danger" id="prnDeleteBtn" type="button">Excluir</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================= CANAIS DE VENDA ======================= -->
+  <section id="tab-channels" class="tab-panel">
+    <div class="list-form-layout">
+      <div class="card">
+        <h2>Canais de venda</h2>
+        <table>
+          <thead><tr><th>Canal</th><th>Taxa (%)</th><th>Taxa fixa (R$)</th></tr></thead>
+          <tbody id="channelsTableBody"></tbody>
+        </table>
+      </div>
+      <div class="card">
+        <h2 id="channelFormTitle">Cadastrar / editar canal</h2>
+        <div class="field-full"><label>Nome do canal</label><input id="chnName" type="text" /></div>
+        <div class="field-full"><label>Taxa percentual (%)</label><input id="chnFeePct" type="number" min="0" max="100" step="0.01" value="0" /></div>
+        <div class="field-full"><label>Taxa fixa por venda (R$)</label><input id="chnFeeFixed" type="number" min="0" step="0.01" value="0" /></div>
+        <div class="btn-row">
+          <button class="btn btn-accent" id="chnSaveBtn" type="button">Salvar</button>
+          <button class="btn" id="chnNewBtn" type="button">Novo</button>
+          <button class="btn btn-danger" id="chnDeleteBtn" type="button">Excluir</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================= CONFIGURAÇÕES ======================= -->
+  <section id="tab-settings" class="tab-panel">
+    <div class="card" style="max-width:640px;">
+      <h2>Configurações globais (valores padrão)</h2>
+      <div class="field"><label>Tarifa de energia (R$/kWh)</label><input id="setTariff" type="number" min="0" step="0.001" value="0.76" /></div>
+      <div class="field"><label>Valor da hora de trabalho (R$)</label><input id="setLaborRate" type="number" min="0" step="0.01" value="25" /></div>
+      <div class="field"><label>Taxa de falha padrão (%)</label><input id="setFailure" type="number" min="0" max="95" step="0.1" value="10" /></div>
+      <div class="field"><label>Imposto padrão (%)</label><input id="setTax" type="number" min="0" max="50" step="0.01" value="6" /></div>
+      <div class="field"><label>Taxa de gateway padrão (%)</label><input id="setGateway" type="number" min="0" max="20" step="0.01" value="0" /></div>
+      <div class="field"><label>Custos fixos mensais (R$)</label><input id="setMonthlyFixed" type="number" min="0" step="0.01" value="0" /></div>
+      <div class="field"><label>Volume mensal esperado (peças)</label><input id="setVolume" type="number" min="1" step="1" value="1" /></div>
+      <div class="field"><label>Custo de embalagem padrão (R$)</label><input id="setPackagingDefault" type="number" min="0" step="0.01" value="0" /></div>
+      <div class="field"><label>Overhead por peça (calculado)</label><input id="setOverheadPreview" type="text" readonly value="R$ 0,00" /></div>
+      <div class="btn-row"><button class="btn btn-accent" id="settingsSaveBtn" type="button">Salvar configurações</button></div>
+      <p class="hint">Seus dados ficam salvos no navegador (localStorage) — não saem da sua máquina.</p>
+    </div>
+  </section>
+
+  <!-- ======================= HISTÓRICO ======================= -->
+  <section id="tab-history" class="tab-panel">
+    <div class="list-form-layout">
+      <div class="card">
+        <h2>Peças precificadas</h2>
+        <table>
+          <thead><tr><th>Data</th><th>Peça</th><th>Peso (g)</th><th>Tempo (h)</th><th>Preço sugerido</th></tr></thead>
+          <tbody id="historyTableBody"></tbody>
+        </table>
+      </div>
+      <div class="card">
+        <h2>Detalhes</h2>
+        <div id="historyDetail" class="hint">Selecione uma peça na lista.</div>
+        <div class="btn-row"><button class="btn btn-danger" id="historyDeleteBtn" type="button" style="display:none;">Excluir peça selecionada</button></div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="footer">PrintQuote <strong>by BMR</strong> — seus dados ficam salvos localmente neste navegador (localStorage), nada é enviado para servidores.</footer>
+
+<div id="toast"></div>
+<div id="printArea"></div>
+
+<script src="js/core.js"></script>
+<script src="js/store.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
