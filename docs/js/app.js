@@ -5,6 +5,7 @@
 
 let lastResult = null;
 let lastPiece = null;
+let lastSnapshot = null;
 let editingMaterialId = null;
 let editingPrinterId = null;
 let editingChannelId = null;
@@ -521,6 +522,106 @@ function renderResult(result) {
   }
 }
 
+// Snapshot completo dos campos da calculadora — permite salvar a peça no
+// histórico e recarregá-la depois pra reajustar. Guarda os valores crus dos
+// inputs (não os objetos resolvidos), que é o que reconstrói o formulário.
+function getCalcSnapshot() {
+  const materials = [];
+  document.querySelectorAll("#materialRows .material-row").forEach((row) => {
+    materials.push({
+      materialId: Number(row.querySelector(".row-material").value),
+      grams: row.querySelector(".row-grams").value,
+    });
+  });
+  return {
+    pieceName: $("pieceName").value,
+    printerId: Number($("printerSelect").value),
+    printTime: $("printTime").value,
+    materials,
+    wastePct: $("wastePct").value,
+    laborModeling: $("laborModeling").value,
+    laborSlicing: $("laborSlicing").value,
+    laborPost: $("laborPost").value,
+    laborPackaging: $("laborPackaging").value,
+    laborRateOverride: $("laborRateOverride").value,
+    failureOverride: $("failureOverride").value,
+    overheadOverride: $("overheadOverride").value,
+    packagingCost: $("packagingCost").value,
+    shippingMode: $("shippingMode").value,
+    shippingCost: $("shippingCost").value,
+    shippingSubsidizePct: $("shippingSubsidizePct").value,
+    channelId: Number($("channelSelect").value),
+    gatewayOverride: $("gatewayOverride").value,
+    taxOverride: $("taxOverride").value,
+    competitorPrice: $("competitorPrice").value,
+  };
+}
+
+function applyCalcSnapshot(snap) {
+  const missing = [];
+  refreshLibraries(); // garante printer/channel selects populados
+
+  $("pieceName").value = snap.pieceName || "";
+  $("printTime").value = snap.printTime ?? 0;
+  $("wastePct").value = snap.wastePct ?? 5;
+  $("laborModeling").value = snap.laborModeling ?? 0;
+  $("laborSlicing").value = snap.laborSlicing ?? 0;
+  $("laborPost").value = snap.laborPost ?? 0;
+  $("laborPackaging").value = snap.laborPackaging ?? 0;
+  $("laborRateOverride").value = snap.laborRateOverride ?? 0;
+  $("failureOverride").value = snap.failureOverride ?? 0;
+  $("overheadOverride").value = snap.overheadOverride ?? 0;
+  $("packagingCost").value = snap.packagingCost ?? 0;
+  $("shippingMode").value = snap.shippingMode || "repassar";
+  $("shippingCost").value = snap.shippingCost ?? 0;
+  $("shippingSubsidizePct").value = snap.shippingSubsidizePct ?? 0;
+  $("gatewayOverride").value = snap.gatewayOverride ?? 0;
+  $("taxOverride").value = snap.taxOverride ?? 0;
+  $("competitorPrice").value = snap.competitorPrice ?? 0;
+
+  const setSelect = (el, id, label) => {
+    if (id == null) return;
+    const val = String(id);
+    if ([...el.options].some((o) => o.value === val)) el.value = val;
+    else missing.push(label);
+  };
+  setSelect($("printerSelect"), snap.printerId, "impressora");
+  setSelect($("channelSelect"), snap.channelId, "canal de venda");
+
+  // recriar as linhas de material
+  $("materialRows").innerHTML = "";
+  const rows = snap.materials && snap.materials.length ? snap.materials : [{ materialId: null, grams: 0 }];
+  rows.forEach((m) => {
+    addMaterialRow();
+    const row = $("materialRows").lastElementChild;
+    const sel = row.querySelector(".row-material");
+    if (m.materialId != null && [...sel.options].some((o) => o.value === String(m.materialId))) {
+      sel.value = String(m.materialId);
+    } else if (m.materialId != null) {
+      missing.push("material");
+    }
+    row.querySelector(".row-grams").value = m.grams ?? 0;
+  });
+
+  return missing;
+}
+
+function loadHistoryToCalculator(id) {
+  const entry = Store.listHistory().find((h) => h.id === id);
+  if (!entry) return;
+  if (!entry.input) {
+    showToast("Essa peça foi salva numa versão antiga, sem os dados completos pra recarregar.");
+    return;
+  }
+  switchTab("calculator");
+  const missing = applyCalcSnapshot(entry.input);
+  if (missing.length) {
+    showToast(`Peça carregada. Reveja: ${[...new Set(missing)].join(", ")} (item removido da biblioteca).`);
+  } else {
+    showToast("Peça carregada na calculadora. Ajuste e recalcule.");
+  }
+}
+
 $("calculateBtn").addEventListener("click", () => {
   const piece = buildPieceFromForm();
   if (!piece) return;
@@ -529,6 +630,7 @@ $("calculateBtn").addEventListener("click", () => {
   const result = computePricing(piece, settings, { competitorPrice });
   lastResult = result;
   lastPiece = piece;
+  lastSnapshot = getCalcSnapshot();
   renderResult(result);
 });
 
@@ -546,6 +648,7 @@ $("saveHistoryBtn").addEventListener("click", () => {
     labor: lastPiece.labor,
     breakdown: lastResult.breakdown,
     finalPrice: recommendedPrice,
+    input: lastSnapshot,
   });
   showToast("Peça salva no histórico.");
 });
@@ -692,8 +795,14 @@ function selectHistoryEntry(id) {
   lines.push("<p><b>Materiais:</b><br>" + entry.materials.map((m) => `— ${m.name}: ${m.grams} g`).join("<br>") + "</p>");
   lines.push("<p><b>Breakdown de custos:</b><br>" + Object.entries(entry.breakdown).map(([k, v]) => `${k}: ${formatBRL(v)}`).join("<br>") + "</p>");
   $("historyDetail").innerHTML = lines.join("");
+  $("historyLoadBtn").style.display = entry.input ? "inline-block" : "none";
   $("historyDeleteBtn").style.display = "inline-block";
 }
+
+$("historyLoadBtn").addEventListener("click", () => {
+  if (selectedHistoryId == null) return;
+  loadHistoryToCalculator(selectedHistoryId);
+});
 
 $("historyDeleteBtn").addEventListener("click", () => {
   if (selectedHistoryId == null) return;
@@ -701,6 +810,7 @@ $("historyDeleteBtn").addEventListener("click", () => {
   Store.deleteHistoryEntry(selectedHistoryId);
   selectedHistoryId = null;
   $("historyDetail").innerHTML = "Selecione uma peça na lista.";
+  $("historyLoadBtn").style.display = "none";
   $("historyDeleteBtn").style.display = "none";
   renderHistoryTable();
   showToast("Peça excluída do histórico.");

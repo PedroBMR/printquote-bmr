@@ -4,7 +4,7 @@
  * essenciais e serve tudo do cache quando não há rede. Bump em CACHE
  * a cada release pra invalidar o cache antigo.
  */
-const CACHE = "printquote-v1";
+const CACHE = "printquote-v2";
 
 const ASSETS = [
   "./",
