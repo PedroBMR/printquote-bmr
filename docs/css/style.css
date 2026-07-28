@@ -725,13 +725,20 @@ footer.footer strong {
 }
 
 /* ---------------- Impressão (exportar orçamento) ---------------- */
+@page {
+  size: A4;
+  margin: 14mm;
+}
+
 @media print {
   header.topbar, nav.tabs, .btn-row, footer.footer, #toast, .bg-orbs {
     display: none !important;
   }
+  html { scroll-behavior: auto; }
   body {
-    background: white;
-    color: black;
+    background: #fff;
+    color: #0d1017;
+    overflow: visible;
   }
   #printArea {
     display: block !important;
@@ -739,8 +746,112 @@ footer.footer strong {
   main > .tab-panel {
     display: none !important;
   }
+  .quote, .quote * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
 }
 
 #printArea {
   display: none;
+}
+
+/* ---------------- Orçamento (layout do PDF) ---------------- */
+.quote {
+  font-family: "Inter", "Segoe UI", sans-serif;
+  color: #0d1017;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.quote .q-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  padding-bottom: 14px;
+  border-bottom: 3px solid #7c3aed;
+}
+.quote .q-brand { display: flex; align-items: center; gap: 12px; }
+.quote .q-logo { width: 52px; height: 52px; object-fit: contain; }
+.quote .q-brand-name { font-size: 20px; font-weight: 800; letter-spacing: -0.02em; }
+.quote .q-brand-name span { color: #7c3aed; font-weight: 700; }
+.quote .q-brand-sub { color: #64748b; font-size: 11px; }
+.quote .q-meta { text-align: right; font-size: 11px; white-space: nowrap; }
+.quote .q-meta div { margin-bottom: 2px; }
+.quote .q-meta span { color: #64748b; margin-right: 6px; }
+.quote .q-meta strong { color: #0d1017; }
+
+.quote .q-parties {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px 20px;
+  margin: 16px 0;
+}
+.quote .q-party { display: flex; flex-direction: column; }
+.quote .q-party span {
+  color: #64748b;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.quote .q-party strong { font-weight: 600; }
+.quote .q-party-wide { grid-column: 1 / -1; }
+
+.quote .q-hero {
+  background: linear-gradient(135deg, #6d28d9, #7c3aed);
+  color: #fff;
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin: 8px 0 18px;
+  text-align: center;
+}
+.quote .q-hero-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.85;
+}
+.quote .q-hero-price { font-size: 34px; font-weight: 800; line-height: 1.1; margin: 2px 0; }
+.quote .q-hero-sub { font-size: 11px; opacity: 0.9; }
+
+.quote .q-h3 { font-size: 13px; margin: 16px 0 6px; color: #6d28d9; }
+.quote .q-table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+.quote .q-table th {
+  text-align: left;
+  background: #f1eafe;
+  color: #4c1d95;
+  padding: 6px 10px;
+  border-bottom: 1px solid #ddd6fe;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.quote .q-table td { padding: 6px 10px; border-bottom: 1px solid #eef0f4; }
+.quote .q-table .q-num { text-align: right; font-variant-numeric: tabular-nums; }
+.quote .q-table .q-total td { font-weight: 800; border-top: 2px solid #7c3aed; border-bottom: none; }
+.quote .q-table .q-row-rec { background: #f5f0ff; }
+.quote .q-table .q-row-rec td:first-child { font-weight: 700; color: #6d28d9; }
+
+.quote .q-notes {
+  margin: 16px 0;
+  padding: 10px 14px;
+  background: #f8fafc;
+  border-left: 3px solid #7c3aed;
+  border-radius: 0 8px 8px 0;
+}
+.quote .q-notes span {
+  color: #64748b;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.quote .q-notes p { margin: 4px 0 0; }
+
+.quote .q-foot {
+  margin-top: 20px;
+  padding-top: 10px;
+  border-top: 1px solid #e2e8f0;
+  color: #64748b;
+  font-size: 10px;
+  text-align: center;
 }

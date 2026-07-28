@@ -129,6 +129,38 @@ const Store = {
     _save(LS_KEYS.history, _load(LS_KEYS.history, []).filter((h) => h.id !== id));
   },
 
+  // ---------------------------------------------------------------------
+  // Backup / restauração (exporta tudo pra um .json e reimporta)
+  // ---------------------------------------------------------------------
+  exportAll() {
+    return {
+      _app: "PrintQuote by BMR",
+      _version: 1,
+      exportedAt: new Date().toISOString(),
+      materials: this.listMaterials(),
+      printers: this.listPrinters(),
+      channels: this.listChannels(),
+      settings: this.loadSettings(),
+      history: _load(LS_KEYS.history, []),
+    };
+  },
+
+  importAll(data) {
+    if (!data || typeof data !== "object" || Array.isArray(data)) {
+      throw new Error("Formato inválido.");
+    }
+    const known = ["materials", "printers", "channels", "settings", "history"];
+    if (!known.some((k) => k in data)) {
+      throw new Error("Não parece um backup do PrintQuote.");
+    }
+    if (Array.isArray(data.materials)) _save(LS_KEYS.materials, data.materials);
+    if (Array.isArray(data.printers)) _save(LS_KEYS.printers, data.printers);
+    if (Array.isArray(data.channels)) _save(LS_KEYS.channels, data.channels);
+    if (data.settings && typeof data.settings === "object") _save(LS_KEYS.settings, data.settings);
+    if (Array.isArray(data.history)) _save(LS_KEYS.history, data.history);
+    localStorage.setItem(LS_KEYS.seeded, "1");
+  },
+
   seedIfEmpty() {
     if (localStorage.getItem(LS_KEYS.seeded)) return;
     if (this.listMaterials().length === 0) {

@@ -6,6 +6,12 @@
 <title>PrintQuote by BMR — Calculadora de Custos e Precificação 3D</title>
 <meta name="description" content="Calculadora de custos e precificação para impressão 3D — material, energia, depreciação, mão de obra, taxas e margem, tudo em um único orçamento." />
 <link rel="icon" href="assets/favicon-32.png" />
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#0a0c12" />
+<link rel="apple-touch-icon" href="assets/icon-256.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="PrintQuote" />
 <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
@@ -81,6 +87,13 @@
           <div class="field"><label>Taxa gateway % (0 = padrão)</label><input id="gatewayOverride" type="number" min="0" max="20" step="0.1" value="0" /></div>
           <div class="field"><label>Imposto % (0 = padrão)</label><input id="taxOverride" type="number" min="0" max="50" step="0.1" value="0" /></div>
           <div class="field"><label>Preço concorrente (R$, opcional)</label><input id="competitorPrice" type="number" min="0" step="0.01" value="0" /></div>
+        </div>
+
+        <div class="card">
+          <h2>Dados do orçamento (para o PDF)</h2>
+          <div class="field"><label>Cliente</label><input id="quoteClient" type="text" placeholder="Nome do cliente (opcional)" /></div>
+          <div class="field"><label>Validade da proposta (dias)</label><input id="quoteValidity" type="number" min="0" step="1" value="7" /></div>
+          <div class="field"><label>Observações</label><textarea id="quoteNotes" rows="3" placeholder="Prazo de entrega, condições de pagamento, etc. (opcional)"></textarea></div>
         </div>
 
         <div class="btn-row">
@@ -218,6 +231,17 @@
       <div class="btn-row"><button class="btn btn-accent" id="settingsSaveBtn" type="button">Salvar configurações</button></div>
       <p class="hint">Seus dados ficam salvos no navegador (localStorage) — não saem da sua máquina.</p>
     </div>
+
+    <div class="card" style="max-width:640px;">
+      <h2>Backup e restauração</h2>
+      <p class="hint">Como os dados ficam só neste navegador, faça um backup antes de limpar o cache ou trocar de computador. Exporte um arquivo <code>.json</code> com tudo (materiais, impressoras, canais, configurações e histórico) e reimporte quando precisar.</p>
+      <div class="btn-row" style="margin-top:12px;">
+        <button class="btn btn-accent" id="exportDataBtn" type="button">Exportar dados (.json)</button>
+        <button class="btn" id="importDataBtn" type="button">Importar dados (.json)</button>
+        <input id="importDataInput" type="file" accept="application/json,.json" style="display:none;" />
+      </div>
+      <p class="hint" style="margin-top:10px;">Ao importar, os dados atuais deste navegador são <strong>substituídos</strong> pelos do arquivo.</p>
+    </div>
   </section>
 
   <!-- ======================= HISTÓRICO ======================= -->
@@ -248,5 +272,12 @@
 <script src="js/core.js"></script>
 <script src="js/store.js"></script>
 <script src="js/app.js"></script>
+<script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("sw.js").catch((err) => console.warn("Service worker não registrado:", err));
+    });
+  }
+</script>
 </body>
 </html>

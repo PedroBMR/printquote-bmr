@@ -295,6 +295,60 @@ $("settingsSaveBtn").addEventListener("click", () => {
   showToast("Configurações salvas.");
 });
 
+// ----- Backup / restauração -----
+function downloadJson(filename, obj) {
+  const blob = new Blob([JSON.stringify(obj, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+$("exportDataBtn").addEventListener("click", () => {
+  const stamp = new Date().toISOString().slice(0, 10);
+  downloadJson(`printquote-backup-${stamp}.json`, Store.exportAll());
+  showToast("Backup exportado.");
+});
+
+$("importDataBtn").addEventListener("click", () => $("importDataInput").click());
+
+$("importDataInput").addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const input = e.target;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(reader.result);
+      if (!confirm("Importar vai SUBSTITUIR os dados atuais deste navegador (materiais, impressoras, canais, configurações e histórico). Continuar?")) {
+        return;
+      }
+      Store.importAll(data);
+      renderMaterialsTable();
+      renderPrintersTable();
+      renderChannelsTable();
+      loadSettingsForm();
+      refreshLibraries();
+      renderHistoryTable();
+      showToast("Dados importados.");
+    } catch (err) {
+      console.error("Falha ao importar backup", err);
+      showToast(`Não foi possível importar: ${err.message || "arquivo inválido"}.`);
+    } finally {
+      input.value = "";
+    }
+  };
+  reader.onerror = () => {
+    showToast("Não foi possível ler o arquivo.");
+    input.value = "";
+  };
+  reader.readAsText(file);
+});
+
 // =======================================================================
 // CALCULADORA
 // =======================================================================
@@ -496,42 +550,113 @@ $("saveHistoryBtn").addEventListener("click", () => {
   showToast("Peça salva no histórico.");
 });
 
+function escapeHtml(str) {
+  return String(str ?? "").replace(/[&<>"']/g, (c) => (
+    { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
+  ));
+}
+
 $("exportBtn").addEventListener("click", () => {
   if (!lastResult || !lastPiece) return showToast("Calcule a peça antes de exportar.");
   const { breakdown, scenarios } = lastResult;
-  const rows = [
+
+  const now = new Date();
+  const pad = (n) => String(n).padStart(2, "0");
+  const quoteNo = `PQ-${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}`;
+  const dateStr = now.toLocaleDateString("pt-BR");
+  const dateTimeStr = now.toLocaleString("pt-BR");
+
+  const validityDays = Math.max(parseInt($("quoteValidity").value, 10) || 0, 0);
+  let validityStr = "—";
+  if (validityDays > 0) {
+    const until = new Date(now.getTime() + validityDays * 86400000);
+    validityStr = `${validityDays} dia(s) — até ${until.toLocaleDateString("pt-BR")}`;
+  }
+
+  const client = $("quoteClient").value.trim();
+  const notes = $("quoteNotes").value.trim();
+  const weightG = lastPiece.materials.reduce((s, u) => s + u.grams, 0);
+
+  // cenário recomendado (50%) — mesmo índice usado na UI e no histórico
+  const rec = scenarios[1] || scenarios[0];
+  const recPrice = rec ? rec.priceCostPlus : breakdown.totalCost;
+  const recLabel = rec ? rec.label : "—";
+
+  const costRows = [
     ["Material", breakdown.materialCost],
     ["Energia", breakdown.energyCost],
-    ["Depreciação", breakdown.depreciationCost],
+    ["Depreciação da máquina", breakdown.depreciationCost],
     ["Manutenção", breakdown.maintenanceCost],
     ["Mão de obra", breakdown.laborCost],
     ["Overhead", breakdown.overheadCost],
     ["Embalagem", breakdown.packagingCost],
     ["Frete absorvido", breakdown.shippingAbsorbed],
-  ];
-  const rowsHtml = rows.map(([l, v]) => `<tr><td>${l}</td><td style="text-align:right">${formatBRL(v)}</td></tr>`).join("");
+  ].filter(([, v]) => v > 0.0001);
+  const costRowsHtml = costRows.map(([l, v]) => `<tr><td>${l}</td><td class="q-num">${formatBRL(v)}</td></tr>`).join("");
+
   const scenariosHtml = scenarios.map((s) => `
-    <tr>
-      <td>${s.label}</td>
-      <td style="text-align:right">${formatBRL(s.priceCostPlus)}</td>
-      <td style="text-align:right">${s.priceMarginOnPrice === Infinity ? "inviável" : formatBRL(s.priceMarginOnPrice)}</td>
+    <tr${s === rec ? ' class="q-row-rec"' : ""}>
+      <td>Margem de ${s.label}</td>
+      <td class="q-num">${formatBRL(s.priceCostPlus)}</td>
+      <td class="q-num">${s.priceMarginOnPrice === Infinity ? "inviável" : formatBRL(s.priceMarginOnPrice)}</td>
     </tr>
   `).join("");
 
+  const materialsLine = lastPiece.materials.map((u) => `${escapeHtml(u.material.name)} (${u.grams} g)`).join(", ");
+
   $("printArea").innerHTML = `
-    <h2>Orçamento — ${lastPiece.name}</h2>
-    <p>Impressora: ${lastPiece.printer.name} | Tempo de impressão: ${lastPiece.printTimeHours.toFixed(2)} h</p>
-    <table border="1" cellspacing="0" cellpadding="4" width="100%">
-      <tr><th>Categoria</th><th>Valor</th></tr>
-      ${rowsHtml}
-      <tr><td><b>Custo total</b></td><td style="text-align:right"><b>${formatBRL(breakdown.totalCost)}</b></td></tr>
-    </table>
-    <h3>Cenários de preço sugeridos</h3>
-    <table border="1" cellspacing="0" cellpadding="4" width="100%">
-      <tr><th>Margem</th><th>Preço (cost-plus)</th><th>Preço (margem)</th></tr>
-      ${scenariosHtml}
-    </table>
-    <p>PrintQuote by BMR — Orçamento gerado automaticamente.</p>
+    <div class="quote">
+      <div class="q-head">
+        <div class="q-brand">
+          <img src="assets/icon-256.png" alt="" class="q-logo" />
+          <div>
+            <div class="q-brand-name">PrintQuote <span>by BMR</span></div>
+            <div class="q-brand-sub">Orçamento de impressão 3D</div>
+          </div>
+        </div>
+        <div class="q-meta">
+          <div><span>Orçamento nº</span><strong>${quoteNo}</strong></div>
+          <div><span>Data</span><strong>${dateStr}</strong></div>
+          <div><span>Validade</span><strong>${validityStr}</strong></div>
+        </div>
+      </div>
+
+      <div class="q-parties">
+        <div class="q-party"><span>Cliente</span><strong>${client ? escapeHtml(client) : "—"}</strong></div>
+        <div class="q-party"><span>Peça</span><strong>${escapeHtml(lastPiece.name)}</strong></div>
+        <div class="q-party"><span>Impressora</span><strong>${escapeHtml(lastPiece.printer.name)}</strong></div>
+        <div class="q-party"><span>Tempo de impressão</span><strong>${lastPiece.printTimeHours.toFixed(2)} h</strong></div>
+        <div class="q-party"><span>Peso total</span><strong>${weightG.toFixed(1)} g</strong></div>
+        <div class="q-party q-party-wide"><span>Materiais</span><strong>${materialsLine || "—"}</strong></div>
+      </div>
+
+      <div class="q-hero">
+        <div class="q-hero-label">Preço sugerido</div>
+        <div class="q-hero-price">${formatBRL(recPrice)}</div>
+        <div class="q-hero-sub">Margem de ${recLabel} sobre o custo · custo total ${formatBRL(breakdown.totalCost)}</div>
+      </div>
+
+      <h3 class="q-h3">Composição do custo</h3>
+      <table class="q-table">
+        <thead><tr><th>Categoria</th><th class="q-num">Valor</th></tr></thead>
+        <tbody>
+          ${costRowsHtml}
+          <tr class="q-total"><td>Custo total</td><td class="q-num">${formatBRL(breakdown.totalCost)}</td></tr>
+        </tbody>
+      </table>
+
+      <h3 class="q-h3">Cenários de preço</h3>
+      <table class="q-table">
+        <thead><tr><th>Cenário</th><th class="q-num">Preço (cost-plus)</th><th class="q-num">Preço (margem s/ preço)</th></tr></thead>
+        <tbody>${scenariosHtml}</tbody>
+      </table>
+
+      ${notes ? `<div class="q-notes"><span>Observações</span><p>${escapeHtml(notes).replace(/\n/g, "<br>")}</p></div>` : ""}
+
+      <div class="q-foot">
+        PrintQuote <strong>by BMR</strong> — orçamento gerado em ${dateTimeStr}. Valores em reais (BRL); preços sujeitos a alteração após a validade.
+      </div>
+    </div>
   `;
   window.print();
 });
