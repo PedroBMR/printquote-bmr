@@ -175,3 +175,15 @@ function computePricing(piece, settings, options = {}) {
 
   return { breakdown, scenarios, competitorPrice, competitorAnalysis };
 }
+
+// Permite reutilizar o motor fora do navegador (ex.: testes de paridade em
+// Node) sem afetar o uso como <script> no browser, onde `module` não existe.
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = {
+    computeMaterialCost, computeEnergyCost, computeDepreciationCost,
+    computeMaintenanceCost, computeLaborCost, computeShippingAbsorbed,
+    computeBreakdown, breakdownChartItems, totalFeePct, channelFixedFee,
+    priceCostPlus, priceMarginOnPrice, analyzePrice, buildScenarios,
+    computePricing,
+  };
+}
