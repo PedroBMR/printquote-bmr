@@ -963,6 +963,49 @@ $("quoteExportBtn").addEventListener("click", () => {
   window.print();
 });
 
+function buildQuoteShareText() {
+  const items = Store.listQuoteItems();
+  const total = items.reduce((s, it) => s + it.unitPrice * it.qty, 0);
+  const client = $("quoteClient").value.trim();
+  const validityDays = Math.max(parseInt($("quoteValidity").value, 10) || 0, 0);
+  const notes = $("quoteNotes").value.trim();
+
+  const lines = ["📋 Orçamento — PrintQuote by BMR"];
+  if (client) lines.push(`Cliente: ${client}`);
+  lines.push("");
+  items.forEach((it) => {
+    lines.push(`• ${it.name} — ${it.qty}x ${formatBRL(it.unitPrice)} = ${formatBRL(it.unitPrice * it.qty)}`);
+  });
+  lines.push("");
+  lines.push(`Total: ${formatBRL(total)}`);
+  if (validityDays > 0) lines.push(`Validade: ${validityDays} dia(s)`);
+  if (notes) {
+    lines.push("");
+    lines.push(`Obs.: ${notes}`);
+  }
+  return lines.join("\n");
+}
+
+$("quoteShareBtn").addEventListener("click", async () => {
+  if (Store.listQuoteItems().length === 0) return showToast("Adicione peças ao orçamento antes de compartilhar.");
+  const text = buildQuoteShareText();
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: "Orçamento — PrintQuote by BMR", text });
+      return;
+    } catch (err) {
+      if (err && err.name === "AbortError") return; // usuário cancelou o menu
+      // qualquer outro erro cai pro fallback de copiar
+    }
+  }
+  try {
+    await navigator.clipboard.writeText(text);
+    showToast("Resumo copiado — cole no WhatsApp ou e-mail.");
+  } catch (e) {
+    showToast("Compartilhamento não suportado neste navegador.");
+  }
+});
+
 // =======================================================================
 // Boot
 // =======================================================================
