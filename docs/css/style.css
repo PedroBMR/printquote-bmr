@@ -694,6 +694,32 @@ td.num {
   transform: translateY(0);
 }
 
+/* ---------------- Banner de atualização (PWA) ---------------- */
+#updateBanner {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translate(-50%, 220%);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--glass-bg-strong);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-btn);
+  padding: 10px 12px 10px 18px;
+  color: var(--text-primary);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5), var(--shadow-glow);
+  z-index: 120;
+  font-size: 13.5px;
+  max-width: calc(100% - 32px);
+  transition: transform 0.35s var(--ease);
+}
+
+#updateBanner.show {
+  transform: translate(-50%, 0);
+}
+
 footer.footer {
   text-align: center;
   color: var(--text-muted);
@@ -731,7 +757,7 @@ footer.footer strong {
 }
 
 @media print {
-  header.topbar, nav.tabs, .btn-row, footer.footer, #toast, .bg-orbs {
+  header.topbar, nav.tabs, .btn-row, footer.footer, #toast, #updateBanner, .bg-orbs {
     display: none !important;
   }
   html { scroll-behavior: auto; }
