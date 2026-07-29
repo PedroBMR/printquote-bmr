@@ -750,6 +750,36 @@ footer.footer strong {
   background: var(--accent);
 }
 
+/* ---------------- Ajustes finos de mobile ---------------- */
+@media (max-width: 640px) {
+  main { padding: 16px 14px 36px 14px; }
+
+  header.topbar { padding: 14px 16px; gap: 10px; }
+  header.topbar .brand-text > span { display: none; } /* subtítulo some pra caber */
+  #installBtn { padding: 8px 12px; font-size: 12px; }
+
+  /* barra de abas: rola na horizontal, ocupa a largura, sem scrollbar visível */
+  nav.tabs {
+    max-width: 100%;
+    margin: 14px 0 0 0;
+    justify-content: flex-start;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  nav.tabs::-webkit-scrollbar { display: none; }
+
+  /* formulário: rótulo acima do campo (o grid de 190px espremia os inputs) */
+  .field {
+    grid-template-columns: 1fr;
+    gap: 5px;
+    margin-bottom: 13px;
+  }
+
+  /* tabelas rolam na horizontal se precisarem, sem estourar a página */
+  .list-form-layout .card { overflow-x: auto; }
+  table { font-size: 12.5px; }
+}
+
 /* ---------------- Impressão (exportar orçamento) ---------------- */
 @page {
   size: A4;
