@@ -10,6 +10,7 @@ const LS_KEYS = {
   channels: "pq_channels",
   settings: "pq_settings",
   history: "pq_history",
+  currentQuote: "pq_current_quote",
   seeded: "pq_seeded_v1",
 };
 
@@ -127,6 +128,34 @@ const Store = {
   },
   deleteHistoryEntry(id) {
     _save(LS_KEYS.history, _load(LS_KEYS.history, []).filter((h) => h.id !== id));
+  },
+
+  // ---------------------------------------------------------------------
+  // Orçamento atual (carrinho de peças precificadas)
+  // ---------------------------------------------------------------------
+  listQuoteItems() {
+    return _load(LS_KEYS.currentQuote, []);
+  },
+  addQuoteItem(item) {
+    const items = this.listQuoteItems();
+    item.id = _nextId(items);
+    items.push(item);
+    _save(LS_KEYS.currentQuote, items);
+    return item;
+  },
+  updateQuoteItemQty(id, qty) {
+    const items = this.listQuoteItems();
+    const it = items.find((i) => i.id === id);
+    if (it) {
+      it.qty = qty;
+      _save(LS_KEYS.currentQuote, items);
+    }
+  },
+  removeQuoteItem(id) {
+    _save(LS_KEYS.currentQuote, this.listQuoteItems().filter((i) => i.id !== id));
+  },
+  clearQuote() {
+    _save(LS_KEYS.currentQuote, []);
   },
 
   // ---------------------------------------------------------------------

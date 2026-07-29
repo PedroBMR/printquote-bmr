@@ -39,6 +39,7 @@ function switchTab(name) {
   document.querySelectorAll(".tab-panel").forEach((p) => p.classList.toggle("active", p.id === `tab-${name}`));
   if (name === "calculator") refreshLibraries();
   if (name === "history") renderHistoryTable();
+  if (name === "quote") renderQuote();
 }
 
 document.querySelectorAll("nav.tabs button").forEach((btn) => {
@@ -817,6 +818,152 @@ $("historyDeleteBtn").addEventListener("click", () => {
 });
 
 // =======================================================================
+// ORÇAMENTO (várias peças)
+// =======================================================================
+$("addToQuoteBtn").addEventListener("click", () => {
+  if (!lastResult || !lastPiece) return showToast("Calcule a peça antes de adicionar ao orçamento.");
+  const qty = Math.max(parseInt($("quoteQty").value, 10) || 1, 1);
+  const rec = lastResult.scenarios[1] || lastResult.scenarios[0];
+  const unitPrice = rec ? rec.priceCostPlus : lastResult.breakdown.totalCost;
+  const weightG = lastPiece.materials.reduce((s, u) => s + u.grams, 0);
+  Store.addQuoteItem({
+    name: lastPiece.name,
+    qty,
+    unitPrice,
+    weightG,
+    printTimeHours: lastPiece.printTimeHours,
+    printerName: lastPiece.printer.name,
+  });
+  $("quoteQty").value = 1;
+  renderQuote();
+  showToast(`Adicionado ao orçamento (${qty}x).`);
+});
+
+function renderQuote() {
+  const items = Store.listQuoteItems();
+  const total = items.reduce((s, it) => s + it.unitPrice * it.qty, 0);
+  const totalQty = items.reduce((s, it) => s + it.qty, 0);
+
+  if (items.length === 0) {
+    $("quoteEmpty").style.display = "";
+    $("quoteTable").style.display = "none";
+  } else {
+    $("quoteEmpty").style.display = "none";
+    $("quoteTable").style.display = "";
+    $("quoteTableBody").innerHTML = items.map((it) => `
+      <tr data-id="${it.id}">
+        <td>${escapeHtml(it.name)}</td>
+        <td class="num"><input class="q-qty" type="number" min="1" step="1" value="${it.qty}" style="max-width:64px;" data-id="${it.id}" /></td>
+        <td class="num">${formatBRL(it.unitPrice)}</td>
+        <td class="num">${formatBRL(it.unitPrice * it.qty)}</td>
+        <td class="num"><button class="btn btn-danger" type="button" data-remove="${it.id}" style="padding:4px 10px;">✕</button></td>
+      </tr>
+    `).join("");
+    $("quoteTableBody").querySelectorAll(".q-qty").forEach((inp) => {
+      inp.addEventListener("change", () => {
+        Store.updateQuoteItemQty(Number(inp.dataset.id), Math.max(parseInt(inp.value, 10) || 1, 1));
+        renderQuote();
+      });
+    });
+    $("quoteTableBody").querySelectorAll("[data-remove]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        Store.removeQuoteItem(Number(btn.dataset.remove));
+        renderQuote();
+      });
+    });
+  }
+  $("quoteTotalValue").textContent = formatBRL(total);
+  $("quoteItemsCount").textContent = `${items.length} item(ns) · ${totalQty} unidade(s)`;
+}
+
+$("quoteClearBtn").addEventListener("click", () => {
+  if (Store.listQuoteItems().length === 0) return;
+  if (!confirm("Limpar todas as peças do orçamento?")) return;
+  Store.clearQuote();
+  renderQuote();
+  showToast("Orçamento limpo.");
+});
+
+$("quoteExportBtn").addEventListener("click", () => {
+  const items = Store.listQuoteItems();
+  if (items.length === 0) return showToast("Adicione peças ao orçamento antes de exportar.");
+
+  const now = new Date();
+  const pad = (n) => String(n).padStart(2, "0");
+  const quoteNo = `PQ-${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}`;
+  const dateStr = now.toLocaleDateString("pt-BR");
+  const dateTimeStr = now.toLocaleString("pt-BR");
+
+  const validityDays = Math.max(parseInt($("quoteValidity").value, 10) || 0, 0);
+  let validityStr = "—";
+  if (validityDays > 0) {
+    const until = new Date(now.getTime() + validityDays * 86400000);
+    validityStr = `${validityDays} dia(s) — até ${until.toLocaleDateString("pt-BR")}`;
+  }
+  const client = $("quoteClient").value.trim();
+  const notes = $("quoteNotes").value.trim();
+
+  const total = items.reduce((s, it) => s + it.unitPrice * it.qty, 0);
+  const totalQty = items.reduce((s, it) => s + it.qty, 0);
+
+  const rowsHtml = items.map((it) => `
+    <tr>
+      <td>${escapeHtml(it.name)}</td>
+      <td class="q-num">${it.qty}</td>
+      <td class="q-num">${formatBRL(it.unitPrice)}</td>
+      <td class="q-num">${formatBRL(it.unitPrice * it.qty)}</td>
+    </tr>
+  `).join("");
+
+  $("printArea").innerHTML = `
+    <div class="quote">
+      <div class="q-head">
+        <div class="q-brand">
+          <img src="assets/icon-256.png" alt="" class="q-logo" />
+          <div>
+            <div class="q-brand-name">PrintQuote <span>by BMR</span></div>
+            <div class="q-brand-sub">Orçamento de impressão 3D</div>
+          </div>
+        </div>
+        <div class="q-meta">
+          <div><span>Orçamento nº</span><strong>${quoteNo}</strong></div>
+          <div><span>Data</span><strong>${dateStr}</strong></div>
+          <div><span>Validade</span><strong>${validityStr}</strong></div>
+        </div>
+      </div>
+
+      <div class="q-parties">
+        <div class="q-party"><span>Cliente</span><strong>${client ? escapeHtml(client) : "—"}</strong></div>
+        <div class="q-party"><span>Itens</span><strong>${items.length} peça(s) diferentes</strong></div>
+        <div class="q-party"><span>Quantidade total</span><strong>${totalQty} un.</strong></div>
+      </div>
+
+      <div class="q-hero">
+        <div class="q-hero-label">Total do orçamento</div>
+        <div class="q-hero-price">${formatBRL(total)}</div>
+        <div class="q-hero-sub">${items.length} peça(s), ${totalQty} unidade(s) no total</div>
+      </div>
+
+      <h3 class="q-h3">Itens</h3>
+      <table class="q-table">
+        <thead><tr><th>Peça</th><th class="q-num">Qtd</th><th class="q-num">Preço unit.</th><th class="q-num">Subtotal</th></tr></thead>
+        <tbody>
+          ${rowsHtml}
+          <tr class="q-total"><td>Total</td><td class="q-num">${totalQty}</td><td class="q-num"></td><td class="q-num">${formatBRL(total)}</td></tr>
+        </tbody>
+      </table>
+
+      ${notes ? `<div class="q-notes"><span>Observações</span><p>${escapeHtml(notes).replace(/\n/g, "<br>")}</p></div>` : ""}
+
+      <div class="q-foot">
+        PrintQuote <strong>by BMR</strong> — orçamento gerado em ${dateTimeStr}. Valores em reais (BRL); preços sujeitos a alteração após a validade.
+      </div>
+    </div>
+  `;
+  window.print();
+});
+
+// =======================================================================
 // Boot
 // =======================================================================
 Store.seedIfEmpty();
@@ -827,3 +974,4 @@ loadSettingsForm();
 refreshLibraries();
 addMaterialRow();
 renderHistoryTable();
+renderQuote();

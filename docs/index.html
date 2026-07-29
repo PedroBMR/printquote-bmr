@@ -30,6 +30,7 @@
 
 <nav class="tabs">
   <button data-tab="calculator" class="active">Calculadora</button>
+  <button data-tab="quote">Orçamento</button>
   <button data-tab="materials">Materiais</button>
   <button data-tab="printers">Impressoras</button>
   <button data-tab="channels">Canais de venda</button>
@@ -100,7 +101,12 @@
         <div class="btn-row">
           <button class="btn btn-accent" id="calculateBtn" type="button">Calcular</button>
           <button class="btn" id="saveHistoryBtn" type="button">Salvar no histórico</button>
-          <button class="btn" id="exportBtn" type="button">Exportar orçamento (PDF)</button>
+          <button class="btn" id="exportBtn" type="button">Exportar esta peça (PDF)</button>
+        </div>
+        <div class="btn-row" style="align-items:center; gap:10px; flex-wrap:wrap;">
+          <label style="color:var(--text-secondary); font-size:13px;">Quantidade</label>
+          <input id="quoteQty" type="number" min="1" step="1" value="1" style="max-width:90px;" />
+          <button class="btn btn-accent" id="addToQuoteBtn" type="button">＋ Adicionar ao orçamento</button>
         </div>
       </div>
 
@@ -129,6 +135,40 @@
           <h2>Cenários de preço sugerido</h2>
           <div class="pricing-grid" id="pricingGrid"></div>
           <div id="competitorBox"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================= ORÇAMENTO ======================= -->
+  <section id="tab-quote" class="tab-panel">
+    <div class="grid-2">
+      <div>
+        <div class="card">
+          <h2>Peças no orçamento</h2>
+          <div id="quoteEmpty" class="empty-state">
+            <div class="icon">🧾</div>
+            Nenhuma peça no orçamento ainda. Vá na <strong>Calculadora</strong>, calcule uma peça e clique em <strong>＋ Adicionar ao orçamento</strong>.
+          </div>
+          <table id="quoteTable" style="display:none;">
+            <thead><tr><th>Peça</th><th class="num">Qtd</th><th class="num">Preço unit.</th><th class="num">Subtotal</th><th></th></tr></thead>
+            <tbody id="quoteTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div>
+        <div class="card">
+          <h2>Total do orçamento</h2>
+          <div class="quote-total-hero">
+            <span class="quote-total-label">Total</span>
+            <span class="quote-total-value" id="quoteTotalValue">R$ 0,00</span>
+            <span class="hint" id="quoteItemsCount">0 peça(s)</span>
+          </div>
+          <div class="btn-row" style="margin-top:16px;">
+            <button class="btn btn-accent" id="quoteExportBtn" type="button">Exportar orçamento (PDF)</button>
+            <button class="btn btn-danger" id="quoteClearBtn" type="button">Limpar orçamento</button>
+          </div>
+          <p class="hint" style="margin-top:12px;">Cada peça entra pelo preço recomendado (margem de 50% sobre o custo). Cliente, validade e observações do PDF vêm dos campos da aba <strong>Calculadora</strong>.</p>
         </div>
       </div>
     </div>
